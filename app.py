@@ -21,6 +21,7 @@ import json
 import os
 import pathlib
 import re
+import tempfile
 import time
 from dataclasses import dataclass, field
 
@@ -52,7 +53,21 @@ def _load_env() -> None:
             os.environ.setdefault(k.strip(), v)
 
 
+def _materialize_service_account() -> None:
+    """Vertex auth on PaaS hosts (Railway): no gcloud ADC there, so accept the
+    service-account key as JSON in GOOGLE_APPLICATION_CREDENTIALS_JSON and
+    point GOOGLE_APPLICATION_CREDENTIALS at a file holding it."""
+    raw = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS_JSON")
+    if not raw or os.environ.get("GOOGLE_APPLICATION_CREDENTIALS"):
+        return
+    p = pathlib.Path(tempfile.gettempdir()) / "gcp-sa.json"
+    p.write_text(raw)
+    p.chmod(0o600)
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(p)
+
+
 _load_env()
+_materialize_service_account()
 
 DEFAULT_PIPELINE_URL = os.environ.get("PB_PIPELINE_URL", "http://localhost:8000")
 
@@ -396,4 +411,13 @@ with gr.Blocks(title="Proposal Builder") as demo:
                      outputs=[pptx_out])
 
 if __name__ == "__main__":
-    demo.launch()
+    # PORT is set by Railway (and most PaaS hosts); absent locally.
+    on_paas = "PORT" in os.environ
+    auth = None
+    if os.environ.get("PB_UI_USER") and os.environ.get("PB_UI_PASS"):
+        auth = (os.environ["PB_UI_USER"], os.environ["PB_UI_PASS"])
+    demo.launch(
+        server_name="0.0.0.0" if on_paas else "127.0.0.1",
+        server_port=int(os.environ.get("PORT", 7860)),
+        auth=auth,
+    )
