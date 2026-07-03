@@ -1,0 +1,23 @@
+RFP — Purchasing Transformation Program
+
+ACME Aerospace (Tier-1 aerostructures supplier, ~2,400 employees, plants in
+Toulouse and Hamburg) invites proposals for a purchasing transformation
+program.
+
+Context: input costs have risen 18% over two years and the supplier base is
+fragmented across 1,100 active vendors. The purchasing organisation (35 FTE,
+Function: Purchasing) operates without commodity strategies or a savings
+tracking process.
+
+Scope requested:
+1. Assess the current purchasing organisation, processes and spend baseline.
+2. Design commodity strategies for the top 8 commodity families.
+3. Identify and commit a savings pipeline, with a tracking mechanism.
+4. Define the target operating model and implementation roadmap.
+
+Expected deliverables: as-is assessment, spend cube, commodity strategy
+playbooks, savings roadmap with committed targets, TOM and transition plan.
+
+Timeline: 12 weeks, starting September 2026. Proposal language: English.
+Please include relevant credentials in aerospace & defense procurement and
+CVs of the proposed team.

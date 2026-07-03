@@ -1,0 +1,14 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# run artifacts
+draft_proposal.json
+draft_proposal.md
+draft_proposal.pptx
+draft_stdout.md
+live_run.log

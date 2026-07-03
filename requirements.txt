@@ -1,0 +1,10 @@
+langgraph>=0.2
+langchain-core>=0.3
+pydantic>=2.7
+httpx>=0.27
+# live mode only (Gemini seams; offline mode needs none of this)
+google-genai>=1.0
+# UI only (app.py)
+gradio>=5.0
+# PPTX export only (export_pptx.py)
+python-pptx>=1.0
