@@ -305,18 +305,26 @@ def load_brief_file(path: str | None):
 # PPTX export
 # ---------------------------------------------------------------------------
 
-DEFAULT_TEMPLATE = os.environ.get(
+_TEMPLATE_CANDIDATE = pathlib.Path(os.environ.get(
     "PB_PPTX_TEMPLATE",
     str(pathlib.Path.home() / "Downloads" /
-        "202006 - PF - DAIS - REX Harmonie - Proposition CYLAD V3.pptx"))
+        "202006 - PF - DAIS - REX Harmonie - Proposition CYLAD V3.pptx"))).expanduser()
+# preload only if it exists (locally it does; on Railway the upload is the way in)
+DEFAULT_TEMPLATE = str(_TEMPLATE_CANDIDATE) if _TEMPLATE_CANDIDATE.exists() else None
+
+_DOWNLOADS = pathlib.Path.home() / "Downloads"
+DEFAULT_LIBRARY_PATHS = str(_DOWNLOADS) if _DOWNLOADS.is_dir() else ""
 
 
-async def export_deck(run_data, template_path: str, library_paths: str):
+async def export_deck(run_data, template_path: str | None, library_paths: str,
+                      library_files: list[str] | None):
     if not run_data:
         raise gr.Error("Run the pipeline first — nothing to export.")
     from export_pptx import export_pptx
     payload = run_data["payload"]
-    template = pathlib.Path(template_path.strip()).expanduser()
+    if not template_path:
+        raise gr.Error("Upload a template deck (.pptx) first.")
+    template = pathlib.Path(template_path).expanduser()
     if not template.exists():
         raise gr.Error(f"Template deck not found: {template}")
 
@@ -347,6 +355,9 @@ async def export_deck(run_data, template_path: str, library_paths: str):
         gr.Warning("Review queue is not clear — exporting a WATERMARKED draft.")
     library = [pathlib.Path(p.strip()).expanduser()
                for p in (library_paths or "").split(",") if p.strip()]
+    # uploaded source decks: gradio stores each under its original file name,
+    # so the containing dirs work as library roots for find_in_library
+    library += [pathlib.Path(f).parent for f in (library_files or [])]
     out = export_pptx(payload, template=template,
                       out=pathlib.Path("draft_proposal.pptx"),
                       slide_library=library or None,
@@ -392,11 +403,16 @@ with gr.Blocks(title="Proposal Builder") as demo:
 
     run_data = gr.State(None)
     with gr.Accordion("PPTX export (CYLAD format)", open=False):
-        template_box = gr.Textbox(label="Template deck", value=DEFAULT_TEMPLATE)
+        template_file = gr.File(label="Template deck (.pptx)",
+                                file_types=[".pptx"], type="filepath",
+                                value=DEFAULT_TEMPLATE)
+        library_files = gr.File(
+            label="Slide library decks — source .pptx for verbatim "
+                  "team/credential slides",
+            file_types=[".pptx"], file_count="multiple", type="filepath")
         library_box = gr.Textbox(
-            label="Slide library folder(s), comma-separated — source decks for "
-                  "verbatim team/credential slides",
-            value=str(pathlib.Path.home() / "Downloads"))
+            label="…and/or library folder(s) on the server, comma-separated",
+            value=DEFAULT_LIBRARY_PATHS)
         export_btn = gr.Button("Export PPTX")
         pptx_out = gr.File(label="Deck")
 
@@ -407,7 +423,7 @@ with gr.Blocks(title="Proposal Builder") as demo:
                   inputs=[brief_box, mode, pipeline_url, tau, max_iters],
                   outputs=[status_html, log_box, draft_md, files_out, run_data])
     export_btn.click(export_deck,
-                     inputs=[run_data, template_box, library_box],
+                     inputs=[run_data, template_file, library_box, library_files],
                      outputs=[pptx_out])
 
 if __name__ == "__main__":
