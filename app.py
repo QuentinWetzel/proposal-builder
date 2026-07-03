@@ -312,11 +312,14 @@ _TEMPLATE_CANDIDATE = pathlib.Path(os.environ.get(
         "202006 - PF - DAIS - REX Harmonie - Proposition CYLAD V3.pptx"))).expanduser()
 DEFAULT_TEMPLATE = str(_TEMPLATE_CANDIDATE) if _TEMPLATE_CANDIDATE.exists() else None
 
+# verbatim team/credential slide sources: PB_SLIDE_LIBRARY (comma-separated
+# folders), else ~/Downloads when it exists (the local dev setup)
 _DOWNLOADS = pathlib.Path.home() / "Downloads"
-DEFAULT_LIBRARY_PATHS = str(_DOWNLOADS) if _DOWNLOADS.is_dir() else ""
+SLIDE_LIBRARY = os.environ.get(
+    "PB_SLIDE_LIBRARY", str(_DOWNLOADS) if _DOWNLOADS.is_dir() else "")
 
 
-async def export_deck(run_data, template_path: str | None, library_paths: str):
+async def export_deck(run_data, template_path: str | None):
     if not run_data:
         raise gr.Error("Run the pipeline first — nothing to export.")
     from export_pptx import export_pptx
@@ -353,7 +356,7 @@ async def export_deck(run_data, template_path: str | None, library_paths: str):
     if not payload["assembled"].get("exportable"):
         gr.Warning("Review queue is not clear — exporting a WATERMARKED draft.")
     library = [pathlib.Path(p.strip()).expanduser()
-               for p in (library_paths or "").split(",") if p.strip()]
+               for p in SLIDE_LIBRARY.split(",") if p.strip()]
     out = export_pptx(payload, template=template,
                       out=pathlib.Path("draft_proposal.pptx"),
                       slide_library=library or None,
@@ -403,10 +406,6 @@ with gr.Blocks(title="Proposal Builder") as demo:
                                       "bundled CYLAD deck",
                                 file_types=[".pptx"], type="filepath",
                                 value=DEFAULT_TEMPLATE)
-        library_box = gr.Textbox(
-            label="Slide library folder(s) on the server, comma-separated — "
-                  "source decks for verbatim team/credential slides",
-            value=DEFAULT_LIBRARY_PATHS)
         export_btn = gr.Button("Export PPTX")
         pptx_out = gr.File(label="Deck")
 
@@ -417,7 +416,7 @@ with gr.Blocks(title="Proposal Builder") as demo:
                   inputs=[brief_box, mode, pipeline_url, tau, max_iters],
                   outputs=[status_html, log_box, draft_md, files_out, run_data])
     export_btn.click(export_deck,
-                     inputs=[run_data, template_file, library_box],
+                     inputs=[run_data, template_file],
                      outputs=[pptx_out])
 
 if __name__ == "__main__":
