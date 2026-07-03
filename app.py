@@ -75,6 +75,10 @@ DEMO_BRIEF = ("RFP: ACME Aerospace seeks a purchasing transformation "
               "program: assess the purchasing organisation, identify "
               "savings, 12 weeks.")
 
+_EXAMPLE_BRIEF_FILE = pathlib.Path(__file__).parent / "example_brief.txt"
+EXAMPLE_BRIEF = (_EXAMPLE_BRIEF_FILE.read_text().strip()
+                 if _EXAMPLE_BRIEF_FILE.exists() else DEMO_BRIEF)
+
 # ---------------------------------------------------------------------------
 # Run state — one Row per pipeline stage, fed by parsed log events
 # ---------------------------------------------------------------------------
@@ -376,9 +380,9 @@ with gr.Blocks(title="Proposal Builder") as demo:
 
     with gr.Row():
         with gr.Column(scale=3):
-            brief_box = gr.Textbox(label="RFP brief", lines=8,
-                                   placeholder="Paste the brief here, or attach "
-                                               "a file on the right…")
+            brief_box = gr.Textbox(label="RFP brief — example prefilled, edit "
+                                         "or replace it", lines=8,
+                                   value=EXAMPLE_BRIEF)
         with gr.Column(scale=1):
             brief_file = gr.File(label="…or drop a brief file",
                                  file_types=[".txt", ".md"], type="filepath")
