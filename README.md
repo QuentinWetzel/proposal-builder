@@ -2,7 +2,7 @@
 
 Takes an RFP brief, plans the canonical proposal structure, and builds each
 section through a **retrieve → draft → critique → re-retrieve loop** against a
-metadata-filtered hybrid RAG pipeline ([chat-with-your-docs](../docchat)).
+metadata-filtered hybrid RAG pipeline ([chat-with-your-docs](https://github.com/QuentinWetzel/docchat)).
 Sections are accepted only when every factual claim traces to a real credential
 and no confidential material from other clients leaks in; anything else is
 escalated to a human with precise flags.
@@ -12,27 +12,29 @@ escalated to a human with precise flags.
 Offline demo (no services — stub LLM + built-in mini corpus; exercises the
 full graph: parallel sections, claim-proof loop, leak hard-block, review queue):
 
-    pip install langgraph langchain-core pydantic httpx
+    pip install -r requirements.txt   # offline needs only the first four
     python cli.py --offline
 
-Live (pipeline + Gemini):
+Live (pipeline + Gemini — copy `.env.example` to `.env` and pick an auth mode:
+Vertex ADC or `GEMINI_API_KEY`; cli.py does not auto-load it):
 
-    export GEMINI_API_KEY=...
-    python cli.py --brief rfp.txt --pipeline-url http://localhost:8000
+    set -a; source .env; set +a
+    python cli.py --brief rfp.txt --pipeline-url "$PB_PIPELINE_URL"
 
-UI (Gradio — paste/drop a brief, live per-worker progress + durations,
-rendered draft with downloads; loads `.env` for live mode):
+UI (Gradio — brief box prefilled with the example, live per-worker progress
++ durations, rendered draft with downloads; auto-loads `.env` for live mode):
 
-    pip install gradio
     python app.py
 
 PPTX export (CYLAD template layouts; Gemini slide-ification of generated
 sections, verbatim slide copy for team/credentials when the source deck is in
---slide-library; watermarked unless the review queue is clear — also a button
-in the UI):
+the slide library; watermarked unless the review queue is clear — also a
+button in the UI). The CYLAD template deck is bundled in `assets/`; the UI
+uses it by default (`PB_PPTX_TEMPLATE` overrides, `PB_SLIDE_LIBRARY` sets
+library folders, default `~/Downloads`). The CLI takes both explicitly:
 
-    pip install python-pptx
-    python export_pptx.py draft_proposal.json --template <cylad_deck.pptx> \
+    python export_pptx.py draft_proposal.json \
+        --template "assets/202006 - PF - DAIS - REX Harmonie - Proposition CYLAD V3.pptx" \
         --slide-library ~/Downloads [--force-draft]
 
 Outputs `draft_proposal.md` (draft + human-review queue) and
@@ -57,6 +59,10 @@ queue is clear.
       + roster + named-people/figure patterns), stale_or_unverified_figures,
       confidence (computed aggregate, not LLM self-score),
       proposed_next_query (full RetrievalSpec: can relax filters).
+    evaluator (evaluator.py)    the judges critique.py builds its verdict from —
+      the check half of the generator/evaluator loop: groundedness judge for
+      per-claim proof, known-client roster for leak attribution, CYLAD
+      slide-background boilerplate stripping.
     rag_adapter (rag_adapter.py) conforms the pipeline's /chat contract:
       explicit_filters_only=True (planner filters authoritative),
       generate=False on proof/creds retrievals (no Gemini cost),
@@ -66,7 +72,14 @@ queue is clear.
 
 ## Tuning
 
-tau (default 0.7), max iterations (default 3) — `cli.py --tau --max-iterations`.
+tau (default 0.6), max iterations (default 3) — `cli.py --tau --max-iterations`.
 `support_threshold` (0.3) in critique.py gates claim proof on the sigmoid-
 normalized rerank score. All three should be calibrated on a golden set of
 briefs, not reasoned about as probabilities.
+
+## Deploy
+
+Railway: `railway.json` runs `python app.py` (binds `0.0.0.0:$PORT` when
+`PORT` is set). Configure the `.env.example` variables on the service;
+`GOOGLE_APPLICATION_CREDENTIALS_JSON` carries Vertex ADC credentials on a
+keyless host.
